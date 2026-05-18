@@ -1,0 +1,81 @@
+﻿[Lab02] Curl mock tests for http://localhost:4010
+
+[1/5] GET http://localhost:4010/health
+HTTP/1.1 200 OK
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Headers: *
+Access-Control-Allow-Credentials: true
+Access-Control-Expose-Headers: *
+Content-type: application/json
+Content-Length: 81
+Date: Sun, 17 May 2026 07:24:44 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"status":"ok","service":"lab02-contract-template","time":"2026-05-10T08:00:00Z"}
+
+---
+[2/5] GET http://localhost:4010/alerts/recent with auth
+HTTP/1.1 200 OK
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Headers: *
+Access-Control-Allow-Credentials: true
+Access-Control-Expose-Headers: *
+Content-type: application/json
+Content-Length: 12
+Date: Sun, 17 May 2026 07:24:44 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"items":[]}
+
+---
+[3/5] POST http://localhost:4010/alerts valid payload
+HTTP/1.1 201 Created
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Headers: *
+Access-Control-Allow-Credentials: true
+Access-Control-Expose-Headers: *
+Location: http://example.com
+Content-type: application/json
+Content-Length: 322
+Date: Sun, 17 May 2026 07:24:44 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"id":"0196fb3d-4ad7-7d1e-9f49-5d5148d2babc","sourceService":"core-business","alertType":"UNAUTHORIZED_ACCESS","severity":"HIGH","message":"PhĂ¡t hiá»‡n truy cáº­p trĂ¡i phĂ©p táº¡i cá»•ng chĂ­nh","relatedEventId":"0196fb3d-4ad7-7d1e-9f49-5d5148d2babc","status":"OPEN","createdAt":"2026-05-10T08:00:00Z","resolvedAt":null}
+
+---
+[4/5] GET http://localhost:4010/alerts/recent no auth
+HTTP/1.1 401 Unauthorized
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Headers: *
+Access-Control-Allow-Credentials: true
+Access-Control-Expose-Headers: *
+sl-violations: [{"location":["request"],"severity":"Error","code":401,"message":"Invalid security scheme used"},{"location":["response","body","instance"],"severity":"Error","code":"format","message":"Response body property instance must match format \"uri\""}]
+Content-type: application/problem+json
+Content-Length: 164
+Date: Sun, 17 May 2026 07:24:44 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"type":"https://campus.local/errors/unauthorized","title":"ChÆ°a xĂ¡c thá»±c","status":401,"detail":"Thiáº¿u Bearer token","instance":"/alerts/recent","errors":[]}
+
+---
+[5/5] POST http://localhost:4010/alerts invalid payload
+HTTP/1.1 422 Unprocessable Entity
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Headers: *
+Access-Control-Allow-Credentials: true
+Access-Control-Expose-Headers: *
+sl-violations: [{"location":["request","body"],"severity":"Error","code":"required","message":"Request body must have required property 'sourceService'"},{"location":["request","body"],"severity":"Error","code":"required","message":"Request body must have required property 'severity'"},{"location":["request","body"],"severity":"Error","code":"required","message":"Request body must have required property 'message'"},{"location":["request","body","alertType"],"severity":"Error","code":"type","message":"Request body property alertType must be string"},{"location":["request","body","alertType"],"severity":"Error","code":"enum","message":"Request body property alertType must be equal to one of the allowed values: UNAUTHORIZED_ACCESS, SENSOR_THRESHOLD_EXCEEDED, UNKNOWN_PERSON, SYSTEM_ERROR"},{"location":["response","body","instance"],"severity":"Error","code":"format","message":"Response body property instance must match format \"uri\""}]
+Content-type: application/problem+json
+Content-Length: 283
+Date: Sun, 17 May 2026 07:24:45 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"type":"https://campus.local/errors/validation","title":"Dá»¯ liá»‡u khĂ´ng há»£p lá»‡","status":400,"detail":"Field cardId khĂ´ng Ä‘Ăºng Ä‘á»‹nh dáº¡ng","instance":"/alerts","errors":[{"field":"cardId","code":"PATTERN_MISMATCH","message":"cardId pháº£i cĂ³ dáº¡ng RFID-YYYY-NNN"}]}
+
+---
+Done.
