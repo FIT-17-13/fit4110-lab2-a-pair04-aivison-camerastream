@@ -169,7 +169,6 @@ components:
         status:
           type: string
           enum: [ok]
-          description: Trạng thái service.
         service:
           type: string
           minLength: 2
@@ -178,52 +177,55 @@ components:
           type: string
           format: date-time
 
-    # --- Đã fix cảnh báo oas3-unused-component bằng cách khai báo thêm mảng oneOf ---
+    # --- SỬA LẠI SCHEMA ĐA HÌNH Ở ĐÂY ĐỂ ÉP PRISM VALIDATE CHẶT CHẼ ---
     ImageInput:
       type: object
-      required: [imageType, cameraId, timestamp]
       discriminator:
         propertyName: imageType
         mapping:
           BASE64: '#/components/schemas/Base64ImagePayload'
           URL: '#/components/schemas/UrlImagePayload'
+      oneOf:
+        - $ref: '#/components/schemas/Base64ImagePayload'
+        - $ref: '#/components/schemas/UrlImagePayload'
+
+    Base64ImagePayload:
+      type: object
+      additionalProperties: false
+      required: [imageType, cameraId, timestamp, base64Data]
       properties:
         imageType:
           type: string
-          enum: [BASE64, URL]
+          enum: [BASE64]
         cameraId:
           type: string
           format: uuid
         timestamp:
           type: string
           format: date-time
-      oneOf:
-        - $ref: '#/components/schemas/Base64ImagePayload'
-        - $ref: '#/components/schemas/UrlImagePayload'
-
-    Base64ImagePayload:
-      allOf:
-        - $ref: '#/components/schemas/ImageInput'
-        - type: object
-          additionalProperties: false
-          required: [base64Data]
-          properties:
-            base64Data:
-              type: string
-              minLength: 10
-              description: Chuỗi ảnh Base64 (tối đa 5MB)
+        base64Data:
+          type: string
+          minLength: 10
+          description: Chuỗi ảnh Base64 (tối đa 5MB)
 
     UrlImagePayload:
-      allOf:
-        - $ref: '#/components/schemas/ImageInput'
-        - type: object
-          additionalProperties: false
-          required: [imageUrl]
-          properties:
-            imageUrl:
-              type: string
-              format: uri
-              description: Đường dẫn tải ảnh tĩnh
+      type: object
+      additionalProperties: false
+      required: [imageType, cameraId, timestamp, imageUrl]
+      properties:
+        imageType:
+          type: string
+          enum: [URL]
+        cameraId:
+          type: string
+          format: uuid
+        timestamp:
+          type: string
+          format: date-time
+        imageUrl:
+          type: string
+          format: uri
+          description: Đường dẫn tải ảnh tĩnh
 
     DetectionResult:
       type: object
