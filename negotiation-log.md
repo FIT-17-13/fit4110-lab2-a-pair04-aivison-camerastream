@@ -1,97 +1,89 @@
 # Biên bản đàm phán hợp đồng API
 
-- Cặp đàm phán: Product B
-- Product: B1 IoT Ingestion / B7 Notification
-- Provider: B1 IoT Ingestion
-- Consumer: B7 Notification
-- Phiên: v1.0
-- Ngày: 2026-05-17
+- **Cặp đàm phán:** Pair 01 (Camera Stream ↔ AI Vision)
+- **Product:** A
+- **Provider:** A4 AI Vision (Nhóm 2 - WL)
+- **Consumer:** A2 Camera Stream (Nhóm 3)
+- **Phiên:** v1.0
+- **Ngày:** 2026-05-19
 
 ---
 
-## Issue #1
+## Issue #1: Định dạng truyền tải dữ liệu hình ảnh
 
-- Raised by: Consumer
-- Endpoint: POST /alerts
-- Concern: B7 Notification cần nhận alert đã tạo đầy đủ thông tin để gửi thông báo đa kênh mà không cần gọi thêm endpoint thứ hai.
-- Proposal: B1 IoT Ingestion trả về 201 Created với `Location` header và payload theo schema `Alert`.
-- Resolution: Accepted
-- Rationale: Giảm roundtrip, giúp Notification có đủ dữ liệu để gửi Telegram, email và app message ngay.
-- Impact: Rút ngắn thời gian xử lý, giảm tải cho hệ thống, đồng thời đảm bảo consumer được cấp dữ liệu chi tiết.
-
----
-
-## Issue #2
-
-- Raised by: Provider
-- Endpoint: POST /alerts
-- Concern: `relatedEventId` không rõ có bắt buộc hay không khi alert phát sinh từ dữ liệu IoT mà chưa liên quan trực tiếp đến event cụ thể.
-- Proposal: Giữ `relatedEventId` là optional; chỉ gửi khi có event id, còn không thì omit hoặc gửi `null`.
-- Resolution: Accepted
-- Rationale: Một số alert từ IoT ingestion không có event ràng buộc rõ, nên contract cần linh hoạt.
-- Impact: Tránh lỗi schema với request không có `relatedEventId` và giữ hợp đồng dễ sử dụng cho cả hai bên.
+- **Người nêu vấn đề:** Provider (AI Vision) - Endpoint: `POST /detect`
+- **Bối cảnh:** Hệ thống Camera Stream cần gửi liên tục dữ liệu hình ảnh (frame) lên AI Vision qua API để nhận diện đối tượng.
+- **Vấn đề:** Consumer muốn gửi ảnh thô qua định dạng `multipart/form-data`, nhưng Provider lo ngại việc này làm khó quá trình đính kèm các dữ liệu metadata (như `cameraId`, `timestamp`) vào cùng một luồng payload, đồng thời khó validate bằng JSON Schema.
+- **Đề xuất:** Provider đề xuất sử dụng `application/json` và cấu trúc đa hình (`oneOf`), trong đó hình ảnh được mã hóa sang chuỗi `Base64` hoặc truyền qua `URL`.
+- **Quyết định:** Chấp thuận (Accepted). Thống nhất dùng JSON payload với schema `ImageInput`. Mặc định dùng `BASE64` cho xử lý realtime, và `URL` cho các luồng xử lý độ trễ thấp.
+- **Rationale:** Giao thức JSON giúp Consumer đóng gói siêu dữ liệu dễ dàng hơn. OpenAPI 3.1.0 hỗ trợ validate JSON Schema chặt chẽ hơn so với form-data.
+- **Tác động đến service:** Consumer phải code thêm logic encode ảnh sang Base64 trước khi gọi API. Provider có thể parse toàn bộ dữ liệu chỉ trong một khối JSON duy nhất.
 
 ---
 
-## Issue #3
+## Issue #2: Giới hạn dung lượng tải trọng (Payload Size)
 
-- Raised by: Consumer
-- Endpoint: GET /alerts/recent
-- Concern: Balance giữa bảo mật và khả năng truy vấn cảnh báo gần đây; nếu thiếu xác thực, Notification có thể nhận dữ liệu nhạy cảm.
-- Proposal: Duy trì `bearerAuth` với 401 Unauthorized khi thiếu token và 403 Forbidden khi token hợp lệ nhưng không đủ quyền.
-- Resolution: Accepted
-- Rationale: Bảo mật endpoint cảnh báo là cần thiết để tránh lộ thông tin sự kiện campus.
-- Impact: Giảm rủi ro truy cập trái phép và đảm bảo tính tuân thủ bảo mật của contract.
-
----
-
-## Issue #4
-
-- Raised by: Provider
-- Endpoint: POST /events
-- Concern: Schema polymorphism `CampusEvent` với `oneOf` và discriminator `eventType` có thể tạo ra khó khăn cho codegen và validation payload.
-- Proposal: Duy trì `eventType` bắt buộc và rõ ràng, đồng thời ghi chú trong docs rằng event payload phải tuân theo subtype tương ứng.
-- Resolution: Accepted
-- Rationale: Cấu trúc này hỗ trợ mở rộng event trong tương lai đồng thời vẫn xác định được loại event ngay ở request.
-- Impact: Giúp consumer và provider thống nhất cách gửi event IoT và cảnh báo, giảm lỗi mapping payload.
+- **Người nêu vấn đề:** Provider (AI Vision) - Endpoint: `POST /detect`
+- **Bối cảnh:** Camera Stream thường ghi hình ở độ phân giải cao để đảm bảo độ sắc nét khi giám sát an ninh khuôn viên.
+- **Vấn đề:** Nếu Consumer đẩy ảnh độ phân giải cao (4K) chưa nén, AI server sẽ bị quá tải bộ nhớ VRAM, dẫn đến sập ứng dụng (`OOM`) và làm tăng độ trễ inference.
+- **Đề xuất:** Cần quy định giới hạn dung lượng tải trọng (payload size) tối đa cho mỗi lượt gửi Base64.
+- **Quyết định:** Chấp thuận (Accepted). Chốt giới hạn kích thước tối đa là 5MB/request. Trả về mã lỗi `413 Payload Too Large` nếu ảnh vượt quá dung lượng.
+- **Rationale:** Bảo vệ tính toàn vẹn và hiệu năng của phần cứng (GPU), giữ thời gian xử lý (latency) ổn định dưới 1 giây.
+- **Tác động đến service:** Consumer bắt buộc phải thiết lập cơ chế nén ảnh hoặc giảm độ phân giải (resize) xuống (VD: 1080p) tại thiết bị Edge trước khi gọi API.
 
 ---
 
-## Issue #5
+## Issue #3: Chuẩn hóa định dạng Bounding Box
 
-- Raised by: Provider
-- Endpoint: GET /alerts
-- Concern: `cursor` parameter hiện là `type: [string, 'null']`, gây nhầm lẫn SDK/validator khi parse OpenAPI.
-- Proposal: Giữ `cursor` là string và chỉ ghi chú rằng giá trị có thể là `null` khi hết dữ liệu.
-- Resolution: Modified
-- Rationale: Cursor nên được xác định là chuỗi để tối ưu cho tooling và code generation.
-- Impact: Tăng khả năng tương thích với codegen và giảm lỗi parse OpenAPI trên client.
+- **Người nêu vấn đề:** Consumer (Camera Stream) - Endpoint: `POST /detect`
+- **Bối cảnh:** AI Vision trả về kết quả phân tích chứa tọa độ khung bao (Bounding Box) để các hệ thống khác vẽ khung nhận diện lên màn hình giám sát.
+- **Vấn đề:** Định dạng của tọa độ khung bao trả về chưa rõ ràng (là pixel tuyệt đối hay tỷ lệ tương đối), dẫn đến rủi ro Consumer vẽ sai vị trí đối tượng trên các màn hình có độ phân giải khác nhau.
+- **Đề xuất:** Consumer yêu cầu chuẩn hóa định dạng tọa độ thống nhất.
+- **Quyết định:** Chấp thuận (Accepted). Thống nhất sử dụng tọa độ tương đối theo cấu trúc `[xMin, yMin, xMax, yMax]`, được chuẩn hóa trong khoảng từ `0.0` đến `1.0`.
+- **Rationale:** Tọa độ tương đối (normalized coordinates) giúp Frontend/Consumer scale khung hình chính xác và độc lập với kích thước ảnh gốc.
+- **Tác động đến service:** Schema `BoundingBox` được cập nhật ràng buộc `minimum: 0.0` và `maximum: 1.0`. Cả hai bên đều phải ánh xạ công thức tính toán tọa độ theo chuẩn này.
 
 ---
 
-## Issue #6
+## Issue #4: Xử lý giá trị khi không có rủi ro
 
-- Raised by: Provider
-- Endpoint: Global error responses (`components/schemas/Problem` và response examples)
-- Concern: Spectral cảnh báo `instance` không hợp lệ với format uri khi dùng giá trị `/alerts` hoặc `/alerts/recent`.
-- Proposal: Điều chỉnh example `instance` thành URI đầy đủ như `https://api.campus.local/alerts` hoặc `https://api.campus.local/alerts/recent`.
-- Resolution: Accepted
-- Rationale: Đảm bảo contract tuân RFC 7807 và giúp Spectral lint sạch.
-- Impact: Loại bỏ warning, cải thiện khả năng dùng tooling và tăng tính chuyên nghiệp của error contract.
+- **Người nêu vấn đề:** Consumer (Camera Stream) - Endpoint: `POST /detect`
+- **Bối cảnh:** AI Vision phân tích frame ảnh và đánh giá mức độ rủi ro sơ bộ (`riskLevel`) của đối tượng/hành vi.
+- **Vấn đề:** Thuộc tính `riskLevel` sẽ mang giá trị gì nếu AI nhận diện được đối tượng (VD: sinh viên đi bộ) nhưng hành vi hoàn toàn bình thường, không cấu thành rủi ro?
+- **Đề xuất:** Consumer đề xuất trả về chuỗi rỗng `""` hoặc không trả về trường này trong chuỗi JSON.
+- **Quyết định:** Chỉnh sửa đề xuất (Modified). Thống nhất sử dụng Union type của OpenAPI 3.1.0: `type: [string, "null"]`. Hệ thống sẽ trả về `null` thay vì chuỗi rỗng nếu không có rủi ro.
+- **Rationale:** Sử dụng `null` biểu thị đúng ngữ nghĩa cấu trúc dữ liệu theo chuẩn JSON Schema 2020-12 thay vì cách lách luật bằng chuỗi rỗng.
+- **Tác động đến service:** Consumer phải cập nhật mã nguồn để kiểm tra giá trị `null` khi đọc kết quả `riskLevel`, tránh lỗi `NullPointerException` lúc parsing dữ liệu.
+
+---
+
+## Issue #5: Cơ chế chống quá tải Burst Traffic
+
+- **Người nêu vấn đề:** Provider (AI Vision) - Endpoint: `POST /detect`
+- **Bối cảnh:** Camera Stream được cấu hình để gửi ảnh lên AI Vision liên tục mỗi khi có chuyển động (motion detection).
+- **Vấn đề:** Nếu có sự kiện bất thường (ví dụ sinh viên ùa ra giờ tan tầm), Consumer có thể liên tục đẩy hàng nghìn frame/giây vào API khiến AI bị quá tải và sập toàn bộ dịch vụ (Thundering Herd).
+- **Đề xuất:** Provider sẽ áp dụng HTTP Rate Limit để bảo vệ API.
+- **Quyết định:** Chấp thuận (Accepted). Provider sẽ trả về lỗi `429 Too Many Requests` khi chạm ngưỡng. Consumer cam kết áp dụng thuật toán ngắt quãng (`Exponential Backoff`) để thử lại, hoặc chủ động bỏ qua khung hình (Drop frame).
+- **Rationale:** Đảm bảo độ sẵn sàng (liveness) và ổn định của AI service trong tình trạng lượng truy cập đột biến.
+- **Tác động đến service:** OpenAPI được cập nhật thêm response `429`. Consumer tốn thêm effort để viết code xử lý hàng đợi (Queue) nội bộ và cơ chế drop frame.
+
+---
+
+## Issue #6: Lỗi dữ liệu Base64 bị hỏng
+
+- **Người nêu vấn đề:** Consumer (Camera Stream) - Endpoint: `POST /detect`
+- **Bối cảnh:** Consumer mã hóa ảnh thành chuỗi Base64 và nhúng vào JSON payload để gửi lên Server.
+- **Vấn đề:** Nếu chuỗi Base64 truyền lên đúng cấu trúc JSON (không bị lỗi HTTP 400) nhưng nội dung file ảnh bên trong bị hỏng (corrupted), mô hình AI không thể giải mã thì sẽ dùng status code nào cho hợp lý?
+- **Đề xuất:** Dùng mã lỗi `400 Bad Request`.
+- **Quyết định:** Chỉnh sửa đề xuất (Modified). Thống nhất sử dụng mã `422 Unprocessable Entity` kèm cấu trúc chuẩn `Problem Details`.
+- **Rationale:** Lỗi `422` phản ánh chính xác nhất tình huống này: Server hiểu Content-Type, cú pháp JSON đúng, nhưng không thể xử lý nội dung ngữ nghĩa bên trong khối dữ liệu ảnh. Giúp phân biệt rõ ràng với lỗi sai định dạng JSON thông thường.
+- **Tác động đến service:** Bổ sung schema `UnprocessableEntity` vào `openapi.yaml`. Consumer có cơ sở rõ ràng để log lỗi hệ thống mã hóa từ đầu ghi camera thay vì đánh giá sai là do lỗi đường truyền mạng.
 
 ---
 
 # Chốt hợp đồng v1.0
 
-Provider sign-off: B1 IoT Ingestion Team  
-Consumer sign-off: B7 Notification Team  
-Witness (GV/TA): FIT4110 TA  
-Date: 2026-05-17
-
----
-
-## Ghi chú warning nếu Spectral còn cảnh báo
-
-| Warning | Lý do chấp nhận tạm thời | Kế hoạch sửa |
-|---|---|---|
-| `instance` format trong example response problem | Hiện contract đang tập trung vào nghiệp vụ alert và notification; chấp nhận tạm để hoàn thành đàm phán | Cập nhật example `instance` thành URI hợp lệ và re-run Spectral ngay sau khi sửa |
+- **Provider sign-off:** Nguyễn Văn Vinh (Đại diện Nhóm 2 - WL - AI Vision)
+- **Consumer sign-off:** Vũ Bích Hợp (Đại diện nhóm 3 - CameraStream)
+- **Witness (GV/TA):** FIT4110 TA
+- **Date:** 2026-05-19
