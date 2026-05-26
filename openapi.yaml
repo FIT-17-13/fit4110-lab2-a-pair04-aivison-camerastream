@@ -3,7 +3,7 @@ info:
   title: Smart Campus — AI Vision Service (Pair 01)
   version: 1.0.0
   description: |
-    Hợp đồng API REST sync giữa Camera Stream (Consumer) và AI Vision (Provider).
+    Hợp đồng API REST sync giữa Camera Stream (Provider) và AI Vision (Consumer).
     Service tiếp nhận hình ảnh từ Camera Stream để chạy suy luận AI (nhận diện đối tượng) 
     và trả về metadata bounding box, class, confidence.
   contact:
