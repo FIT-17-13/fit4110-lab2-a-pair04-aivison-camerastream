@@ -64,4 +64,8 @@ Tối thiểu 5 case.
 |---|---|---|
 | AI Vision xử lý chậm gây treo kết nối (Timeout). | Consumer bị tắc nghẽn luồng xử lý do phải chờ kết quả quá lâu, gây tốn tài nguyên. | Hai bên chốt thời gian Timeout tĩnh (VD: 2000ms). Consumer chủ động drop kết nối nếu quá hạn. |
 | Định nghĩa field tọa độ (Bounding Box) không khớp nhau. | Consumer parse mảng tọa độ bị sai, vẽ sai vị trí đối tượng lên màn hình giám sát. | Provider cần đặc tả rõ Bounding Box trả về dạng [x_min, y_min, x_max, y_max] hay dạng [x_center, y_center, width, height] trong openapi.yaml. |
+<<<<<<< HEAD
 | Gửi ảnh dồn dập (Burst Traffic) làm sập AI Server. | Mất kết nối diện rộng, các tính năng thông minh bị tê liệt. | Thống nhất cấu hình HTTP Rate Limit và Consumer phải có cơ chế bỏ qua bớt frame (Frame Dropping) lúc cao điểm. |
+=======
+| Gửi ảnh dồn dập (Burst Traffic) làm sập AI Server. | Mất kết nối diện rộng, các tính năng thông minh bị tê liệt. | Thống nhất cấu hình HTTP Rate Limit và Consumer phải có cơ chế bỏ qua bớt frame (Frame Dropping) lúc cao điểm. |
+>>>>>>> fb47a7a3e0e6b4bcda95493aef3268cc795b63a3

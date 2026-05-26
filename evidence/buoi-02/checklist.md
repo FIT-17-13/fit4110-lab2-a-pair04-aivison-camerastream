@@ -17,4 +17,8 @@
 - [x] Có 5 ảnh request mẫu trong `mock-screenshots/`.
 - [x] `negotiation-log.md` có tối thiểu 6 issue.
 - [x] Có sign-off Provider, Consumer, Witness.
+<<<<<<< HEAD
 - [x] Đã hoàn thiện `VERSIONING.md` cho bài tập về nhà.
+=======
+- [x] Đã hoàn thiện `VERSIONING.md` cho bài tập về nhà.
+>>>>>>> fb47a7a3e0e6b4bcda95493aef3268cc795b63a3
