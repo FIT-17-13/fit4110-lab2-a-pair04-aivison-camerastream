@@ -3,15 +3,11 @@ info:
   title: Smart Campus — AI Vision Service (Pair 01)
   version: 1.0.0
   description: |
-<<<<<<< HEAD
-    Hợp đồng API REST sync giữa Camera Stream (Provider) và AI Vision (Consumer).
-=======
     Hợp đồng API REST sync giữa Camera Stream (Consumer) và AI Vision (Provider).
->>>>>>> fb47a7a3e0e6b4bcda95493aef3268cc795b63a3
     Service tiếp nhận hình ảnh từ Camera Stream để chạy suy luận AI (nhận diện đối tượng) 
     và trả về metadata bounding box, class, confidence.
   contact:
-    name: Nhóm 03 - WL (Nguyễn Văn Vinh)
+    name: Nhóm 02 - WL (Nguyễn Văn Vinh)
     email: vinhnv@example.edu.vn
 servers:
   - url: http://localhost:4010
@@ -182,13 +178,24 @@ components:
           format: date-time
 
     # --- SỬA LẠI SCHEMA ĐA HÌNH Ở ĐÂY ĐỂ ÉP PRISM VALIDATE CHẶT CHẼ ---
+# --- SỬA LẠI SCHEMA ĐA HÌNH Ở ĐÂY ĐỂ ÉP PRISM VALIDATE CHẶT CHẼ ---
     ImageInput:
       type: object
+      required: [imageType, cameraId, timestamp]
       discriminator:
         propertyName: imageType
         mapping:
           BASE64: '#/components/schemas/Base64ImagePayload'
           URL: '#/components/schemas/UrlImagePayload'
+      properties:
+        imageType:
+          type: string
+        cameraId:
+          type: string
+          format: uuid
+        timestamp:
+          type: string
+          format: date-time
       oneOf:
         - $ref: '#/components/schemas/Base64ImagePayload'
         - $ref: '#/components/schemas/UrlImagePayload'
